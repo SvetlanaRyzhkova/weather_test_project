@@ -27,7 +27,7 @@ namespace weather_test_project
                 }
             }
 
-            Console.WriteLine("Погода");
+            Console.WriteLine("Forecast");
             while (true)
             {
                 string answear = Console.ReadLine();
@@ -37,40 +37,54 @@ namespace weather_test_project
                 }
                 else if (needHelp || answear == "-h" || answear == "--help")
                 {
-                    Console.WriteLine("Вспомогательная информация");
+                    Console.WriteLine("Help information");
                     needHelp = false;
                 }
                 else
                 {
                     HttpClient client = new HttpClient();
-                    HttpResponseMessage response = await client.GetAsync("https://api.open-meteo.com/v1/forecast?latitude=57.63&longitude=39.87&hourly=temperature_2m&start_date=2023-02-05&end_date=2023-02-08");
 
-                    if (response.IsSuccessStatusCode)
-                    {
-                        //получаем погодные значения
-                        var forecastJSON = await response.Content.ReadAsStringAsync();
-                        var forecastJSONDocument = System.Text.Json.JsonDocument.Parse(forecastJSON);
-                        string latitude = forecastJSONDocument.RootElement.GetProperty("latitude").ToString();
-                        string longitude = forecastJSONDocument.RootElement.GetProperty("longitude").ToString();
-                        var hours = forecastJSONDocument.RootElement.GetProperty("hourly").GetProperty("time");
-                        var temperatures = forecastJSONDocument.RootElement.GetProperty("hourly").GetProperty("temperature_2m");
-                        List<ForecastForAnHour> forecastForAnHours = new List<ForecastForAnHour>();
-                        for (int i = 0; i < hours.GetArrayLength(); i++)
-                        {
-                            forecastForAnHours.Add(new ForecastForAnHour { time = hours[i].ToString(), temperature = temperatures[i].ToString() });
-                        }
-                        ForecastOfTheCity forecast = new ForecastOfTheCity
-                        {
-                            city = answear,
-                            latitude = latitude,
-                            longitude = longitude,
-                            forecastForAnHours = forecastForAnHours
-
-                        };
-                        Console.WriteLine($"Погода в {answear} отличная");
-
+                    // получаем координаты населённого пункта
+                    HttpResponseMessage coordinatesResponse = await client.GetAsync($"https://geocoding-api.open-meteo.com/v1/search?name={answear}");
+                    if (!coordinatesResponse.IsSuccessStatusCode){
+                        continue;
                     }
-                    Console.WriteLine($"Погода в {answear} отличная");
+                    var coordinatesJSON = await coordinatesResponse.Content.ReadAsStringAsync();
+                    var coordinatesJSONDocument = System.Text.Json.JsonDocument.Parse(coordinatesJSON);
+                    JsonElement results;
+                    bool isSuccesfull = coordinatesJSONDocument.RootElement.TryGetProperty("results", out results);
+                    if (!isSuccesfull) { 
+                        Console.WriteLine("Sorry, couldn't find your locality. Try again!");
+                        continue;
+                    }
+                    string latitude = results[0].GetProperty("latitude").ToString(); 
+                    string longitude = results[0].GetProperty("longitude").ToString();
+
+                    //получаем погодные значения
+                    HttpResponseMessage forecastResponse = await client.GetAsync($"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m");
+                    if (!forecastResponse.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine("Couldn't receive data. Try again!");
+                        continue;
+                    }
+                    var forecastJSON = await forecastResponse.Content.ReadAsStringAsync();
+                    var forecastJSONDocument = System.Text.Json.JsonDocument.Parse(forecastJSON);
+                    var hours = forecastJSONDocument.RootElement.GetProperty("hourly").GetProperty("time");
+                    var temperatures = forecastJSONDocument.RootElement.GetProperty("hourly").GetProperty("temperature_2m");
+                    List<ForecastForAnHour> forecastForAnHours = new List<ForecastForAnHour>();
+                    for (int i = 0; i < hours.GetArrayLength(); i++)
+                    {
+                        forecastForAnHours.Add(new ForecastForAnHour { time = hours[i].ToString(), temperature = temperatures[i].ToString() });
+                    }
+                    ForecastOfTheCity forecast = new ForecastOfTheCity
+                    {
+                        city = answear,
+                        latitude = latitude,
+                        longitude = longitude,
+                        forecastForAnHours = forecastForAnHours
+
+                    };
+                    Console.WriteLine($"{answear}'s weather is good!");
                 }
             }
         }
