@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
-//using System.Text.Json;
+using System.Text.Json;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -47,9 +47,27 @@ namespace weather_test_project
 
                     if (response.IsSuccessStatusCode)
                     {
+                        //получаем погодные значения
                         var forecastJSON = await response.Content.ReadAsStringAsync();
-                        //var forecast = System.Text.Json.JsonSerializer.Deserialize<WeatherOfTheCity>(forecastJSON);
-                        //IEnumerable<string> categories = await response.Content.ReadAsAsync<IEnumerable<string>>();
+                        var forecastJSONDocument = System.Text.Json.JsonDocument.Parse(forecastJSON);
+                        string latitude = forecastJSONDocument.RootElement.GetProperty("latitude").ToString();
+                        string longitude = forecastJSONDocument.RootElement.GetProperty("longitude").ToString();
+                        var hours = forecastJSONDocument.RootElement.GetProperty("hourly").GetProperty("time");
+                        var temperatures = forecastJSONDocument.RootElement.GetProperty("hourly").GetProperty("temperature_2m");
+                        List<ForecastForAnHour> forecastForAnHours = new List<ForecastForAnHour>();
+                        for (int i = 0; i < hours.GetArrayLength(); i++)
+                        {
+                            forecastForAnHours.Add(new ForecastForAnHour { time = hours[i].ToString(), temperature = temperatures[i].ToString() });
+                        }
+                        ForecastOfTheCity forecast = new ForecastOfTheCity
+                        {
+                            city = answear,
+                            latitude = latitude,
+                            longitude = longitude,
+                            forecastForAnHours = forecastForAnHours
+
+                        };
+                        Console.WriteLine($"Погода в {answear} отличная");
 
                     }
                     Console.WriteLine($"Погода в {answear} отличная");
@@ -58,16 +76,17 @@ namespace weather_test_project
         }
     }
 
-    public class WeatherOfTheCity
+    public class ForecastOfTheCity
     {
-        public double latitude { get; set; }
-        public double longitude { get; set; }
-        public List<WeatherForAnHour> weatherForAnHourList { get; set; }
+        public string city { get; set; }
+        public string latitude { get; set; }
+        public string longitude { get; set; }
+        public List<ForecastForAnHour> forecastForAnHours { get; set; }
     }
 
-    public class WeatherForAnHour
+    public class ForecastForAnHour
     {
-        public DateTime time { get; set; }
-        public double temperature { get; set; }
+        public string time { get; set; }
+        public string temperature { get; set; }
     }
 }
