@@ -84,8 +84,23 @@ namespace weather_test_project
                         forecastForAnHours = forecastForAnHours
 
                     };
-                    Console.WriteLine($"{answear}'s weather is good!");
+                    prettyPrint(forecast);
                 }
+            }
+
+            void prettyPrint(ForecastOfTheCity forecast)
+            {
+                Console.WriteLine("-------------------------------------------------------------------------------");
+                Console.WriteLine($"City - {forecast.city}");
+                Console.WriteLine($"Latitude - {forecast.latitude}");
+                Console.WriteLine($"Longitude - {forecast.longitude}");
+                Console.WriteLine("-------------------------------------------------------------------------------");
+                Console.WriteLine("\tDateTime\t\t\tTemperature");
+                for (int i = 0; i < forecast.forecastForAnHours.Count(); i++)
+                {
+                    Console.WriteLine($"\t{forecast.forecastForAnHours[i].time}\t\t{forecast.forecastForAnHours[i].temperature}");
+                }
+                Console.WriteLine("-------------------------------------------------------------------------------");
             }
         }
     }
